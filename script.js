@@ -65,9 +65,37 @@ function loadCsvText(csvText) {
   applyRulesAndRender();
   return txns;
 }
+// --- Date helpers (AU-friendly) ---
+function parseDateSmart(s){
+  if (!s) return null;
+  const str = String(s).trim();
+  let m;
 
+  // 1) Unambiguous ISO-like: YYYY-MM-DD or YYYY/MM/DD
+  m = str.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+
+  // 2) Force AU style for slashes/dashes: DD/MM/YYYY (so 1/6/2025 = 1 June 2025)
+  m = str.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+
+  // 3) Month-name formats (e.g. "Mon 1 September, 2025", "1 September 2025")
+  const s2 = str.replace(/^\d{1,2}:\d{2}\s*(am|pm)\s*/i, ''); // strip leading time if present
+  m = s2.match(/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)?\s*(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+(\d{4})/i);
+  if (m){
+    const day = +m[1];
+    const monthName = m[2].toLowerCase();
+    const y = +m[3];
+    const mm = {january:0,february:1,march:2,april:3,may:4,june:5,july:6,august:7,september:8,october:9,november:10,december:11};
+    const mi = mm[monthName];
+    if (mi != null) return new Date(y, mi, day);
+  }
+
+  // 4) Give up (don’t fall back to native US parser)
+  return null;
+}
 // --- Date helpers
-function parseDateSmart(s) {
+function parseDateSmartold(s) {
   if (!s) return null;
   // Try native
   let d = new Date(s);
